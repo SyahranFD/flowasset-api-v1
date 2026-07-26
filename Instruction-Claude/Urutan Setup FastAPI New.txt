@@ -1,0 +1,39 @@
+Membuat Virtual Environment
+
+- di terminal, ketik python -m venv .venv
+
+- di terminal, ketik .venv\Scripts\Activate.ps1
+
+
+Membuat Migration
+
+- di terminal, ketik pip install alembic
+
+- di terminal, ketik alembic init alembic
+
+- di alembic.ini, ubah isinya
+
+- di folder alembic -> env.py, ubah isinya
+
+- di folder app -> config, tambahkan file config.py dan database.py
+
+- di .env, tambah SQLALCHEMY_DATABASE_URL=postgresql://postgres:admin@localhost:5433/fastapi_mindtune_api
+
+- di terminal, ketik alembic revision -m "create user table"
+
+- di terminal, ketik alembic upgrade head
+
+- jika ingin downgrade, maka di terminal ketik alembic downgrade base
+
+
+Memulai Project
+
+- di terminal, ketik pip install "fastapi[all]"
+
+- di folder app, buat file main.py
+
+- di terminal, ketik uvicorn app.main:app --reload
+
+- di terminal, ketik pip install sqlalchemy
+
+- urutan folder, model -> schemas -> service -> router

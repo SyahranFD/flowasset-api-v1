@@ -1,0 +1,13 @@
+.venv/
+__pycache__/
+*.pyc
+*.pyo
+.env
+storage/videos/*
+storage/audio/*
+storage/clips/*
+storage/final/*
+!storage/videos/.gitkeep
+!storage/audio/.gitkeep
+!storage/clips/.gitkeep
+!storage/final/.gitkeep
