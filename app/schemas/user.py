@@ -2,7 +2,7 @@ from datetime import datetime
 from typing import Optional
 from uuid import UUID
 
-from pydantic import BaseModel, EmailStr, ConfigDict, field_validator
+from pydantic import BaseModel, EmailStr, field_validator
 
 
 class RegisterRequest(BaseModel):
@@ -47,11 +47,12 @@ class AccessTokenResponse(BaseModel):
     token_type: str = "bearer"
 
 
-class UserResponse(BaseModel):
-    model_config = ConfigDict(from_attributes=True)
-
+class UserOut(BaseModel):
     id: UUID
     email: str
     full_name: str
     npwp: Optional[str] = None
     created_at: datetime
+
+    class Config:
+        from_attributes = True

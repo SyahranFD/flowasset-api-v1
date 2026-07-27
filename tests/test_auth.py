@@ -1,13 +1,13 @@
-from httpx import AsyncClient
+from starlette.testclient import TestClient
 
 
 # ─────────────────────────────────────────────────────────────
 # POST /api/v1/auth/register
 # ─────────────────────────────────────────────────────────────
 
-async def test_register_success(client: AsyncClient):
+def test_register_success(client: TestClient):
     """Happy path: register a new user, should return 201 with user data."""
-    response = await client.post("/api/v1/auth/register", json={
+    response = client.post("/api/v1/auth/register", json={
         "email": "alice@example.com",
         "password": "securepassword",
         "full_name": "Alice Smith",
@@ -21,31 +21,31 @@ async def test_register_success(client: AsyncClient):
     assert "hashed_password" not in data
 
 
-async def test_register_duplicate_email(client: AsyncClient):
+def test_register_duplicate_email(client: TestClient):
     """Registering the same email twice should return 400."""
     payload = {
         "email": "dup@example.com",
         "password": "securepassword",
         "full_name": "Duplicate User",
     }
-    await client.post("/api/v1/auth/register", json=payload)
-    response = await client.post("/api/v1/auth/register", json=payload)
+    client.post("/api/v1/auth/register", json=payload)
+    response = client.post("/api/v1/auth/register", json=payload)
     assert response.status_code == 400
     assert "already registered" in response.json()["detail"].lower()
 
 
-async def test_register_missing_fields(client: AsyncClient):
+def test_register_missing_fields(client: TestClient):
     """Missing full_name should return 422 validation error."""
-    response = await client.post("/api/v1/auth/register", json={
+    response = client.post("/api/v1/auth/register", json={
         "email": "noname@example.com",
         "password": "securepassword",
     })
     assert response.status_code == 422
 
 
-async def test_register_invalid_email(client: AsyncClient):
+def test_register_invalid_email(client: TestClient):
     """Non-email string should return 422 validation error."""
-    response = await client.post("/api/v1/auth/register", json={
+    response = client.post("/api/v1/auth/register", json={
         "email": "not-an-email",
         "password": "securepassword",
         "full_name": "Bad Email",
@@ -53,9 +53,9 @@ async def test_register_invalid_email(client: AsyncClient):
     assert response.status_code == 422
 
 
-async def test_register_short_password(client: AsyncClient):
+def test_register_short_password(client: TestClient):
     """Password under 8 characters should return 422."""
-    response = await client.post("/api/v1/auth/register", json={
+    response = client.post("/api/v1/auth/register", json={
         "email": "short@example.com",
         "password": "abc",
         "full_name": "Short Pass",
@@ -67,14 +67,14 @@ async def test_register_short_password(client: AsyncClient):
 # POST /api/v1/auth/login
 # ─────────────────────────────────────────────────────────────
 
-async def test_login_success(client: AsyncClient):
+def test_login_success(client: TestClient):
     """Happy path: login should return access_token and refresh_token."""
-    await client.post("/api/v1/auth/register", json={
+    client.post("/api/v1/auth/register", json={
         "email": "bob@example.com",
         "password": "bobpassword",
         "full_name": "Bob Jones",
     })
-    response = await client.post("/api/v1/auth/login", json={
+    response = client.post("/api/v1/auth/login", json={
         "email": "bob@example.com",
         "password": "bobpassword",
     })
@@ -85,23 +85,23 @@ async def test_login_success(client: AsyncClient):
     assert data["token_type"] == "bearer"
 
 
-async def test_login_wrong_password(client: AsyncClient):
+def test_login_wrong_password(client: TestClient):
     """Wrong password should return 401."""
-    await client.post("/api/v1/auth/register", json={
+    client.post("/api/v1/auth/register", json={
         "email": "charlie@example.com",
         "password": "rightpassword",
         "full_name": "Charlie",
     })
-    response = await client.post("/api/v1/auth/login", json={
+    response = client.post("/api/v1/auth/login", json={
         "email": "charlie@example.com",
         "password": "wrongpassword",
     })
     assert response.status_code == 401
 
 
-async def test_login_nonexistent_email(client: AsyncClient):
+def test_login_nonexistent_email(client: TestClient):
     """Login with email that doesn't exist should return 401."""
-    response = await client.post("/api/v1/auth/login", json={
+    response = client.post("/api/v1/auth/login", json={
         "email": "ghost@example.com",
         "password": "anypassword",
     })
@@ -112,20 +112,20 @@ async def test_login_nonexistent_email(client: AsyncClient):
 # POST /api/v1/auth/refresh
 # ─────────────────────────────────────────────────────────────
 
-async def test_refresh_token_success(client: AsyncClient):
+def test_refresh_token_success(client: TestClient):
     """Valid refresh token should return a new access token."""
-    await client.post("/api/v1/auth/register", json={
+    client.post("/api/v1/auth/register", json={
         "email": "diana@example.com",
         "password": "dianapassword",
         "full_name": "Diana",
     })
-    login_res = await client.post("/api/v1/auth/login", json={
+    login_res = client.post("/api/v1/auth/login", json={
         "email": "diana@example.com",
         "password": "dianapassword",
     })
     refresh_token = login_res.json()["refresh_token"]
 
-    response = await client.post("/api/v1/auth/refresh", json={
+    response = client.post("/api/v1/auth/refresh", json={
         "refresh_token": refresh_token,
     })
     assert response.status_code == 200
@@ -134,28 +134,28 @@ async def test_refresh_token_success(client: AsyncClient):
     assert data["token_type"] == "bearer"
 
 
-async def test_refresh_token_invalid(client: AsyncClient):
+def test_refresh_token_invalid(client: TestClient):
     """Garbage refresh token should return 401."""
-    response = await client.post("/api/v1/auth/refresh", json={
+    response = client.post("/api/v1/auth/refresh", json={
         "refresh_token": "this.is.not.a.valid.token",
     })
     assert response.status_code == 401
 
 
-async def test_refresh_using_access_token_fails(client: AsyncClient):
+def test_refresh_using_access_token_fails(client: TestClient):
     """Access token must not be accepted by /refresh endpoint."""
-    await client.post("/api/v1/auth/register", json={
+    client.post("/api/v1/auth/register", json={
         "email": "eve@example.com",
         "password": "evepassword",
         "full_name": "Eve",
     })
-    login_res = await client.post("/api/v1/auth/login", json={
+    login_res = client.post("/api/v1/auth/login", json={
         "email": "eve@example.com",
         "password": "evepassword",
     })
     access_token = login_res.json()["access_token"]
 
-    response = await client.post("/api/v1/auth/refresh", json={
+    response = client.post("/api/v1/auth/refresh", json={
         "refresh_token": access_token,
     })
     assert response.status_code == 401
@@ -165,9 +165,9 @@ async def test_refresh_using_access_token_fails(client: AsyncClient):
 # GET /api/v1/auth/me
 # ─────────────────────────────────────────────────────────────
 
-async def test_get_me_success(client: AsyncClient, auth_headers: dict):
+def test_get_me_success(client: TestClient, auth_headers: dict):
     """Authenticated request should return current user data."""
-    response = await client.get("/api/v1/auth/me", headers=auth_headers)
+    response = client.get("/api/v1/auth/me", headers=auth_headers)
     assert response.status_code == 200
     data = response.json()
     assert data["email"] == "testuser@flowasset.com"
@@ -176,15 +176,15 @@ async def test_get_me_success(client: AsyncClient, auth_headers: dict):
     assert "hashed_password" not in data
 
 
-async def test_get_me_no_token(client: AsyncClient):
+def test_get_me_no_token(client: TestClient):
     """No Authorization header: HTTPBearer returns 403."""
-    response = await client.get("/api/v1/auth/me")
+    response = client.get("/api/v1/auth/me")
     assert response.status_code == 403
 
 
-async def test_get_me_invalid_token(client: AsyncClient):
+def test_get_me_invalid_token(client: TestClient):
     """Invalid token should return 401."""
-    response = await client.get(
+    response = client.get(
         "/api/v1/auth/me",
         headers={"Authorization": "Bearer invalid.token.here"},
     )

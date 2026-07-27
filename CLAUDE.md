@@ -1,3 +1,57 @@
+## Struktur & Konvensi Project
+
+> **WAJIB DIBACA SETIAP SESI.** Project ini mengikuti konvensi yang didefinisikan di `Instruction-Claude/struktur_fastapi_md.md`. Semua keputusan arsitektur, penamaan file, pola kode, dan urutan pengembangan HARUS mengikuti file tersebut.
+
+### Struktur Folder (Wajib Diikuti)
+
+```
+flowasset-fastapi/
+├── app/
+│   ├── config/          # config.py + database.py (BUKAN app/core/)
+│   ├── model/           # SQLAlchemy ORM — 1 file per tabel (BUKAN app/models/)
+│   ├── schemas/         # Pydantic schemas — 1 file per domain
+│   ├── service/         # Business logic (BUKAN app/services/)
+│   ├── router/          # FastAPI routes (BUKAN app/routers/)
+│   ├── utils/           # time.py — wib_now()
+│   └── main.py          # FastAPI app (BUKAN root main.py)
+├── alembic/versions/
+├── seeder/
+└── ...
+```
+
+### Aturan Penamaan File (Kritis)
+| Layer | Pola | Contoh |
+|-------|------|--------|
+| Model | `app/model/nama_entitas.py` | `app/model/asset.py` |
+| Schema | `app/schemas/nama_entitas.py` | `app/schemas/asset.py` |
+| Service | `app/service/nama_entitas_service.py` | `app/service/asset_service.py` |
+| Router | `app/router/router_nama_entitas.py` | `app/router/router_asset.py` |
+| Seeder | `seeder/seed_nama_entitas.py` | `seeder/seed_asset.py` |
+
+### Urutan Pembuatan Endpoint Baru
+```
+1. app/model/       → SQLAlchemy ORM
+2. alembic/         → migration → alembic upgrade head
+3. app/schemas/     → Pydantic Base/Create/Update/Out
+4. app/service/     → Business logic (CRUD + validasi)
+5. app/router/      → FastAPI endpoints (panggil service)
+6. app/main.py      → import & include_router
+7. seeder/          → (opsional) data awal
+```
+
+### Aturan Kritis yang Sering Salah
+- Database: **PostgreSQL**, BUKAN SQLite
+- Primary key: selalu `UUID(as_uuid=True)` dengan `default=uuid.uuid4`
+- Timestamp: selalu `wib_now()` dari `app/utils/time.py`, BUKAN `datetime.now()`
+- `db.flush()` di service, BUKAN `db.commit()` (commit dihandle `get_db()`)
+- Auth: `HTTPBearer` scheme, BUKAN `OAuth2PasswordBearer`
+- Semua endpoint WAJIB `Depends(get_current_user)` kecuali `/register` dan `/login`
+- Router prefix: `/api/nama-entitas` (kebab-case)
+
+> Untuk pola kode lengkap (template model, schema, service, router, seeder, auth), buka `Instruction-Claude/struktur_fastapi_md.md`.
+
+---
+
 ## Workflow Orchestration
 
 ### 1. Plan Mode Default

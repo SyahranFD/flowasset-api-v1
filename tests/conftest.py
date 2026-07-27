@@ -1,70 +1,75 @@
 import pytest
-import pytest_asyncio
-from httpx import AsyncClient, ASGITransport
-from sqlalchemy.ext.asyncio import create_async_engine, async_sessionmaker, AsyncSession
+from sqlalchemy import create_engine, text
+from sqlalchemy.orm import sessionmaker
+from starlette.testclient import TestClient
 
-from app.core.database import Base
-from app.core.deps import get_db
-from main import app
+from app.config.config import DB_USER, DB_PASS, DB_HOST, DB_PORT, TEST_DB_NAME
+from app.config.database import Base, get_db
+from app.main import app
 
-TEST_DATABASE_URL = "sqlite+aiosqlite:///./test_flowasset.db"
-
-test_engine = create_async_engine(
-    TEST_DATABASE_URL,
-    echo=False,
-    connect_args={"check_same_thread": False},
-)
-
-TestSessionLocal = async_sessionmaker(
-    bind=test_engine,
-    class_=AsyncSession,
-    expire_on_commit=False,
-    autocommit=False,
-    autoflush=False,
-)
+TEST_DATABASE_URL = f"postgresql://{DB_USER}:{DB_PASS}@{DB_HOST}:{DB_PORT}/{TEST_DB_NAME}?sslmode=disable"
 
 
-@pytest_asyncio.fixture(scope="function", autouse=True)
-async def setup_database():
+def _ensure_test_db_exists():
+    admin_engine = create_engine(
+        f"postgresql://{DB_USER}:{DB_PASS}@{DB_HOST}:{DB_PORT}/postgres?sslmode=disable",
+        isolation_level="AUTOCOMMIT",
+    )
+    with admin_engine.connect() as conn:
+        exists = conn.execute(
+            text("SELECT 1 FROM pg_database WHERE datname = :name"), {"name": TEST_DB_NAME}
+        ).scalar()
+        if not exists:
+            conn.execute(text(f'CREATE DATABASE "{TEST_DB_NAME}"'))
+    admin_engine.dispose()
+
+
+_ensure_test_db_exists()
+
+test_engine = create_engine(TEST_DATABASE_URL)
+
+TestSessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=test_engine)
+
+
+@pytest.fixture(autouse=True)
+def setup_database():
     """Drop and recreate all tables before each test for full isolation."""
-    async with test_engine.begin() as conn:
-        await conn.run_sync(Base.metadata.create_all)
+    Base.metadata.create_all(bind=test_engine)
     yield
-    async with test_engine.begin() as conn:
-        await conn.run_sync(Base.metadata.drop_all)
+    Base.metadata.drop_all(bind=test_engine)
 
 
-@pytest_asyncio.fixture
-async def client(setup_database):
-    async def override_get_db():
-        async with TestSessionLocal() as session:
-            try:
-                yield session
-                await session.commit()
-            except Exception:
-                await session.rollback()
-                raise
+@pytest.fixture
+def client(setup_database):
+    def override_get_db():
+        db = TestSessionLocal()
+        try:
+            yield db
+        except Exception:
+            db.rollback()
+            raise
+        else:
+            db.commit()
+        finally:
+            db.close()
 
     app.dependency_overrides[get_db] = override_get_db
 
-    async with AsyncClient(
-        transport=ASGITransport(app=app),
-        base_url="http://test",
-    ) as ac:
-        yield ac
+    with TestClient(app) as c:
+        yield c
 
     app.dependency_overrides.clear()
 
 
-@pytest_asyncio.fixture
-async def auth_headers(client: AsyncClient) -> dict:
+@pytest.fixture
+def auth_headers(client: TestClient) -> dict:
     """Register + login a test user, return Authorization headers."""
-    await client.post("/api/v1/auth/register", json={
+    client.post("/api/v1/auth/register", json={
         "email": "testuser@flowasset.com",
         "password": "testpassword123",
         "full_name": "Test User",
     })
-    response = await client.post("/api/v1/auth/login", json={
+    response = client.post("/api/v1/auth/login", json={
         "email": "testuser@flowasset.com",
         "password": "testpassword123",
     })
