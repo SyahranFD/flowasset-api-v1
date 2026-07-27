@@ -1,3 +1,15 @@
+## Deployment & VPS Log (Wajib)
+
+- Setiap kali Claude melakukan aksi apa pun terhadap VPS/infrastruktur produksi project ini — command SSH, perubahan `.env` di server, perubahan konfigurasi nginx/systemd, DNS, restart service, dll — **WAJIB** dicatat sebagai entri baru di `Log-Claude/claude-deploy-log.md` (format: `## YYYY-MM-DD HH:MM UTC — judul aksi`, lalu detail command & hasilnya).
+- Folder `Log-Claude/` sengaja masuk `.gitignore` — **JANGAN PERNAH** dihapus dari `.gitignore` atau di-commit ke GitHub, karena isinya bisa memuat detail infrastruktur sensitif.
+- Catat SEBELUM atau SEGERA SETELAH aksi dieksekusi, bukan direncanakan lalu dilupakan — kalau plan berubah di tengah jalan, update entrinya, jangan biarkan log tidak sinkron dengan kondisi nyata server.
+
+## Aturan Git (Kritis)
+
+- **JANGAN PERNAH** menjalankan perintah `git` apa pun (add, commit, push, checkout, dll) di project ini, dengan alasan atau konteks apa pun — termasuk saat diminta "commit dong", "git add", atau sejenisnya.
+- User yang akan menjalankan sendiri semua perintah git. Alasannya: user tidak mau ada co-author/contributor "Claude" tercatat di history repository mereka.
+- Kalau user minta commit, cukup siapkan pesan commit (judul + body) dan sarankan perintah `git`-nya sebagai teks, JANGAN dieksekusi.
+
 ## Struktur & Konvensi Project
 
 > **WAJIB DIBACA SETIAP SESI.** Project ini mengikuti konvensi yang didefinisikan di `Instruction-Claude/struktur_fastapi_md.md`. Semua keputusan arsitektur, penamaan file, pola kode, dan urutan pengembangan HARUS mengikuti file tersebut.

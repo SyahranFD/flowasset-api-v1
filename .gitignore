@@ -3,6 +3,7 @@ __pycache__/
 *.pyc
 *.pyo
 .env
+Log-Claude/
 storage/videos/*
 storage/audio/*
 storage/clips/*
